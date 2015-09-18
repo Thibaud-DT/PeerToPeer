@@ -1,13 +1,14 @@
 package fr.peertopeer.objects;
 
 import java.io.File;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class Pair {
+public class Pair implements Serializable{
 
 	private UUID uuid;
 	private InetAddress adress;
@@ -57,5 +58,11 @@ public class Pair {
 	}
 	public void addFile(File file) {
 		sharedFiles.add(file);
+	}
+
+	@Override
+	public String toString() {
+		return "Pair [uuid=" + uuid + ", adress=" + adress + ", filePort=" + filePort + ", sharedFiles=" + sharedFiles
+				+ "]";
 	}
 }

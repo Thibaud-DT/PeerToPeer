@@ -1,5 +1,7 @@
 package fr.peertopeer.objects;
 
-public class PairListQuery extends Request{
+import java.io.Serializable;
+
+public class PairListQuery extends Request implements Serializable{
 
 }
