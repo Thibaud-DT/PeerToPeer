@@ -1,14 +1,16 @@
-package fr.peertopeer.objects;
+package fr.peertopeer.objects.request;
 
 import java.io.Serializable;
 
-public class NewPair extends Request implements Serializable{
+import fr.peertopeer.objects.Pair;
+
+public class NewPairRequest extends Request implements Serializable{
 	private Pair newPair;
 	
-	public NewPair() {
+	public NewPairRequest() {
 	}
 	
-	public NewPair(Pair newPair) {
+	public NewPairRequest(Pair newPair) {
 		this.newPair = newPair;
 	}
 

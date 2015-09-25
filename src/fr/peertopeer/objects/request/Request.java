@@ -1,4 +1,4 @@
-package fr.peertopeer.objects;
+package fr.peertopeer.objects.request;
 
 import java.io.Serializable;
 

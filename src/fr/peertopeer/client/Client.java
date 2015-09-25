@@ -8,10 +8,10 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.List;
 
-import fr.peertopeer.objects.NewPair;
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.PairList;
-import fr.peertopeer.objects.PairListQuery;
+import fr.peertopeer.objects.request.NewPairRequest;
+import fr.peertopeer.objects.request.PairListRequest;
 import fr.peertopeer.utils.Serializer;
 
 public class Client {
@@ -36,7 +36,7 @@ public class Client {
 	}
 	
 	public void pair() {
-		NewPair newMe = new NewPair(me);
+		NewPairRequest newMe = new NewPairRequest(me);
 		byte[] datas = Serializer.serialize(newMe);
 		System.out.println("New pair on "+serverAdress.getHostName());
 		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
@@ -53,7 +53,7 @@ public class Client {
 	}
 	
 	public void retrievePairsList() {
-		byte[] datas = Serializer.serialize(new PairListQuery());
+		byte[] datas = Serializer.serialize(new PairListRequest());
 		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
 		try {
 			System.out.println("Retrieving pairs...");

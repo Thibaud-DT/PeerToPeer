@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.UUID;
 
 import fr.peertopeer.objects.*;
+import fr.peertopeer.objects.request.NewPairRequest;
+import fr.peertopeer.objects.request.PairListRequest;
+import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
 
 public class Server implements Runnable {
@@ -40,10 +43,10 @@ public class Server implements Runnable {
 				ObjectInputStream iStream = new ObjectInputStream(new ByteArrayInputStream(packet.getData()));
 				Request req = (Request) iStream.readObject();
 				iStream.close();
-				if (req instanceof NewPair) {
-					Pair newPair = ((NewPair) req).getNewPair();
+				if (req instanceof NewPairRequest) {
+					Pair newPair = ((NewPairRequest) req).getNewPair();
 					newPair(newPair, packet);
-				} else if (req instanceof PairListQuery) {
+				} else if (req instanceof PairListRequest) {
 					sendPairList(packet);
 				}
 			} catch (SocketException e) {
