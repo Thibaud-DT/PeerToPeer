@@ -11,6 +11,7 @@ import java.util.List;
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.NewPairRequest;
 import fr.peertopeer.objects.request.PairListRequest;
+import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
 
 public class Client {
@@ -34,36 +35,28 @@ public class Client {
 		me = new Pair(socket.getLocalAddress(), tcpSharedFilesPort, null);
 	}
 	
-	public void pair() {
-		NewPairRequest newMe = new NewPairRequest(me);
-		byte[] datas = Serializer.serialize(newMe);
-		System.out.println("New pair on "+serverAdress.getHostName());
+	public void send(Request request) throws IOException{
+		// On Serialize la Request
+		byte[] datas = Serializer.serialize(request);
+		
+		// On envoie la Request serialized
 		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
-		try {
-			socket.send(packet);
-			DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
-			socket.receive(rPacket);
-			me = (Pair)Serializer.deserialize(rPacket.getData());
-			System.out.println(me);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		socket.send(packet);
+		
+		// On ecoute la reponse
+		DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
+		socket.receive(rPacket);
+		
+		// On traite la reponse
+		receiveResponse(Serializer.deserialize(rPacket.getData()));
+		
 	}
 	
-	public void retrievePairsList() {
-		byte[] datas = Serializer.serialize(new PairListRequest());
-		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
-		try {
-			System.out.println("Retrieving pairs...");
-			socket.send(packet);
-			DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
-			socket.receive(rPacket);
-			pairsList = (List<Pair>)Serializer.deserialize(rPacket.getData());
-			System.out.println(pairsList);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	private void receiveResponse(Object response){
+		if(response instanceof Pair){
+			me = (Pair)response;
+		}else if(response instanceof List<?>){
+			pairsList = (List<Pair>) response;
 		}
 	}
 	
@@ -75,7 +68,12 @@ public class Client {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		client.pair();
-		client.retrievePairsList();
+		try {
+			client.send(new NewPairRequest(client.me));
+			client.send(new PairListRequest());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
