@@ -1,10 +1,15 @@
 package fr.peertopeer.objects.request;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
+import fr.peertopeer.server.Server;
 
 public class NewPairRequest extends Request implements Serializable{
+	
+	private static final long serialVersionUID = 1L;
+	
 	private Pair newPair;
 	
 	public NewPairRequest() {
@@ -20,5 +25,13 @@ public class NewPairRequest extends Request implements Serializable{
 
 	public void setNewPair(Pair newPair) {
 		this.newPair = newPair;
+	}
+
+	@Override
+	public Object build(Server server) {
+		newPair.setUuid(UUID.randomUUID());
+		server.addPair(newPair);
+		
+		return newPair;
 	}
 }

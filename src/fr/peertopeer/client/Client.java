@@ -9,7 +9,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import fr.peertopeer.objects.Pair;
-import fr.peertopeer.objects.PairList;
 import fr.peertopeer.objects.request.NewPairRequest;
 import fr.peertopeer.objects.request.PairListRequest;
 import fr.peertopeer.utils.Serializer;
