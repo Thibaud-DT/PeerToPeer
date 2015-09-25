@@ -6,16 +6,16 @@ import java.util.UUID;
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.server.Server;
 
-public class NewPairRequest extends Request implements Serializable{
+public class ConnectionRequest extends Request implements Serializable{
 	
 	private static final long serialVersionUID = 1L;
 	
 	private Pair newPair;
 	
-	public NewPairRequest() {
+	public ConnectionRequest() {
 	}
 	
-	public NewPairRequest(Pair newPair) {
+	public ConnectionRequest(Pair newPair) {
 		this.newPair = newPair;
 	}
 

@@ -9,7 +9,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import fr.peertopeer.objects.Pair;
-import fr.peertopeer.objects.request.NewPairRequest;
+import fr.peertopeer.objects.request.ConnectionRequest;
 import fr.peertopeer.objects.request.PairListRequest;
 import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
@@ -52,6 +52,7 @@ public class Client {
 		
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void receiveResponse(Object response){
 		if(response instanceof Pair){
 			me = (Pair)response;
@@ -70,7 +71,7 @@ public class Client {
 		}
 		try {
 			System.out.println("Pairing...");
-			client.send(new NewPairRequest(client.me));
+			client.send(new ConnectionRequest(client.me));
 			System.out.println(client.me);
 			System.out.println("Retrievint pairs list...");
 			client.send(new PairListRequest());

@@ -78,6 +78,10 @@ public class Server implements Runnable {
 		pairsList.add(newPair);
 	}
 	
+	public void removePair(Pair removePair){
+		pairsList.remove(removePair);
+	}
+	
 	public List<Pair> getPairsList(){
 		return pairsList;
 	}
