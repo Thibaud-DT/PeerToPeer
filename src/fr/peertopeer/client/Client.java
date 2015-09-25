@@ -69,8 +69,12 @@ public class Client {
 			e.printStackTrace();
 		}
 		try {
+			System.out.println("Pairing...");
 			client.send(new NewPairRequest(client.me));
+			System.out.println(client.me);
+			System.out.println("Retrievint pairs list...");
 			client.send(new PairListRequest());
+			System.out.println(client.pairsList);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
