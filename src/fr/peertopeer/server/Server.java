@@ -6,8 +6,10 @@ import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.Request;
@@ -15,7 +17,7 @@ import fr.peertopeer.utils.Serializer;
 
 public class Server implements Runnable {
 	
-	private List<Pair> pairsList;
+	private Map<UUID,Pair> pairsList;
 	private DatagramSocket socket;
 	private Thread runningThread;
 	private byte[] bufferReceived;
@@ -28,7 +30,7 @@ public class Server implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		pairsList = new ArrayList<Pair>();
+		pairsList = new HashMap<UUID,Pair>();
 	}
 
 	@Override
@@ -40,7 +42,16 @@ public class Server implements Runnable {
 				ObjectInputStream iStream = new ObjectInputStream(new ByteArrayInputStream(packet.getData()));
 				Request req = (Request) iStream.readObject();
 				iStream.close();
-				send(req, packet);
+				if(req.isBroadcast()){
+					for(Entry<UUID,Pair> pair : pairsList.entrySet()){
+						DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
+						packetPair.setAddress(pair.getValue().getAdress());
+						packetPair.setPort(pair.getValue().getPort());
+						send(req, packetPair);
+					}
+				}else{
+					send(req, packet);					
+				}
 			} catch (IOException | ClassNotFoundException e) {
 				System.err.println(e.getMessage());
 			}
@@ -75,14 +86,14 @@ public class Server implements Runnable {
 	}
 	
 	public void addPair(Pair newPair) {
-		pairsList.add(newPair);
+		pairsList.put(newPair.getUuid(),newPair);
 	}
 	
 	public void removePair(Pair removePair){
-		pairsList.remove(removePair);
+		pairsList.remove(removePair.getUuid());
 	}
 	
-	public List<Pair> getPairsList(){
+	public Map<UUID,Pair> getPairsList(){
 		return pairsList;
 	}
 

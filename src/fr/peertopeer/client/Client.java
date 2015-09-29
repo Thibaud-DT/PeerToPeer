@@ -7,15 +7,19 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.ConnectionRequest;
 import fr.peertopeer.objects.request.PairListRequest;
+import fr.peertopeer.objects.request.QuitRequest;
 import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
 
-public class Client {
-	private List<Pair> pairsList;
+public class Client {	
+	
+	private Map<UUID,Pair> pairsList;
 	private Pair me;
 	private DatagramSocket socket;
 	private InetAddress serverAdress;
@@ -32,7 +36,7 @@ public class Client {
 		}
 		this.serverPort = serverPort;
 		this.serverAdress = serverAdress;
-		me = new Pair(socket.getLocalAddress(), tcpSharedFilesPort, null);
+		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(),tcpSharedFilesPort, null);
 	}
 	
 	public void send(Request request) throws IOException{
@@ -57,28 +61,35 @@ public class Client {
 		if(response instanceof Pair){
 			me = (Pair)response;
 		}else if(response instanceof List<?>){
-			pairsList = (List<Pair>) response;
+			pairsList = (Map<UUID,Pair>) response;
 		}
 	}
 	
 	public static void main(String[] args) {
 		Client client = null;
+		Client client2 = null;
 		try {
 			client = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]));
+			client2 = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]));
 		} catch (NumberFormatException | UnknownHostException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		try {
-			System.out.println("Pairing...");
 			client.send(new ConnectionRequest(client.me));
-			System.out.println(client.me);
-			System.out.println("Retrievint pairs list...");
 			client.send(new PairListRequest());
-			System.out.println(client.pairsList);
+			client2.send(new ConnectionRequest(client2.me));
+			client2.send(new PairListRequest());
+			System.out.println(client2.pairsList);
+			client.send(new QuitRequest(client.me));
+			client2.send(new PairListRequest());
+			System.out.println(client2.pairsList);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private void close() {
+		socket.close();
 	}
 }

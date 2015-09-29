@@ -15,13 +15,16 @@ public class Pair implements Serializable{
 	private InetAddress adress;
 	private int filePort;
 	private List<File> sharedFiles;
+
+	private int port;
 	
 	public Pair() {
 		sharedFiles = new ArrayList<File>();
 	}
 	
-	public Pair(InetAddress adress, int filePort, List<File> sharedFiles) {
+	public Pair(InetAddress adress,int port, int filePort, List<File> sharedFiles) {
 		this.adress = adress;
+		this.setPort(port);
 		this.filePort = filePort;
 		this.sharedFiles = sharedFiles;
 		this.uuid = UUID.randomUUID();
@@ -63,7 +66,15 @@ public class Pair implements Serializable{
 
 	@Override
 	public String toString() {
-		return "Pair [uuid=" + uuid + ", adress=" + adress + ", filePort=" + filePort + ", sharedFiles=" + sharedFiles
+		return "Pair [uuid=" + uuid + ", adress=" + adress + ", port=" + port + ", filePort=" + filePort + ", sharedFiles=" + sharedFiles
 				+ "]";
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
 	}
 }
