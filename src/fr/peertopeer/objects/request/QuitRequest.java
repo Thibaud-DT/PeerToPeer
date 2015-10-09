@@ -16,9 +16,11 @@ public class QuitRequest extends Request{
 
 	@Override
 	public Object build(Server server) {
-		server.removePair(getPairQuiting());
-		this.setWasBuild(true);
-		return server.getPairsList();
+		if(response == null){
+			server.removePair(getPairQuiting());
+			response = server.getPairsList();
+		}
+		return response;
 	}
 
 	public Pair getPairQuiting() {

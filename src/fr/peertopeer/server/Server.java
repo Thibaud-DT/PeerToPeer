@@ -60,7 +60,7 @@ public class Server implements Runnable {
 	}
 	
 	private void send(Request request, DatagramPacket packet) throws IOException{
-		byte[] datas = Serializer.serialize(request.wasBuild()?null:request.build(this));
+		byte[] datas = Serializer.serialize(request.build(this));
 		packet.setData(datas);
 		socket.send(packet);
 	}
