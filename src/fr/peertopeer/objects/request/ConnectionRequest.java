@@ -31,7 +31,7 @@ public class ConnectionRequest extends Request implements Serializable{
 	public Object build(Server server) {
 		newPair.setUuid(UUID.randomUUID());
 		server.addPair(newPair);
-		
+		System.out.println("Add pair "+newPair.getUuid().toString());
 		return newPair;
 	}
 }
