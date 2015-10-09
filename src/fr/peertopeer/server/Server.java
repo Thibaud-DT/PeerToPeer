@@ -43,8 +43,9 @@ public class Server implements Runnable {
 				Request req = (Request) iStream.readObject();
 				iStream.close();
 				if(req.isBroadcast()){
+					req.build(this);
+					DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
 					for(Entry<UUID,Pair> pair : pairsList.entrySet()){
-						DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
 						packetPair.setAddress(pair.getValue().getAdress());
 						packetPair.setPort(pair.getValue().getPort());
 						send(req, packetPair);
@@ -59,7 +60,7 @@ public class Server implements Runnable {
 	}
 	
 	private void send(Request request, DatagramPacket packet) throws IOException{
-		byte[] datas = Serializer.serialize(request.build(this));
+		byte[] datas = Serializer.serialize(request.wasBuild()?null:request.build(this));
 		packet.setData(datas);
 		socket.send(packet);
 	}

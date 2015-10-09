@@ -67,22 +67,15 @@ public class Client {
 	
 	public static void main(String[] args) {
 		Client client = null;
-		Client client2 = null;
 		try {
 			client = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]));
-			client2 = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]));
 		} catch (NumberFormatException | UnknownHostException e) {
 			e.printStackTrace();
 		}
 		try {
 			client.send(new ConnectionRequest(client.me));
 			client.send(new PairListRequest());
-			client2.send(new ConnectionRequest(client2.me));
-			client2.send(new PairListRequest());
-			System.out.println(client2.pairsList);
-			client.send(new QuitRequest(client.me));
-			client2.send(new PairListRequest());
-			System.out.println(client2.pairsList);
+			System.out.println(client.pairsList);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
