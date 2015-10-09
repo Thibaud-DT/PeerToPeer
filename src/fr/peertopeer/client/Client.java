@@ -7,12 +7,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +17,6 @@ import java.util.UUID;
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.ConnectionRequest;
 import fr.peertopeer.objects.request.PairListRequest;
-import fr.peertopeer.objects.request.QuitRequest;
 import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
 
@@ -29,11 +25,12 @@ public class Client {
 	private Map<UUID, Pair> pairsList;
 	private Pair me;
 	private DatagramSocket socket;
-	private InetAddress serverAdress;
-	private int serverPort;
+	protected InetAddress serverAdress;
+	protected int serverPort;
 	private byte[] bufferReceived;
 	private FilesSharedSocket filesSSocket = null;
-	
+	private ThreadRefresh threadRefresh;
+	private ThreadListen threadListen;
 
 	public Client(InetAddress serverAdress, int serverPort,
 			int tcpSharedFilesPort, String pathSharedFiles) {
@@ -49,14 +46,37 @@ public class Client {
 		try {
 			filesSSocket = new FilesSharedSocket();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println(e.getMessage());
 		}
 		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(),
 				filesSSocket.getLocalPort(), getFilesToShared(pathSharedFiles));
+
+		try {
+			sendAndReceive(new ConnectionRequest(me));
+			sendAndReceive(new PairListRequest());
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+
+		threadListen = new ThreadListen(this, socket);
+		threadListen.start();
+		
+		//threadRefresh = new ThreadRefresh(this, socket);
+		//threadRefresh.start();
 	}
 
 	public void send(Request request) throws IOException {
+		// On Serialize la Request
+		byte[] datas = Serializer.serialize(request);
+
+		// On envoie la Request serialized
+		DatagramPacket packet = new DatagramPacket(datas, datas.length,
+				serverAdress, serverPort);
+		socket.send(packet);
+
+	}
+
+	public void sendAndReceive(Request request) throws IOException {
 		// On Serialize la Request
 		byte[] datas = Serializer.serialize(request);
 
@@ -76,43 +96,26 @@ public class Client {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void receiveResponse(Object response) {
+	protected void receiveResponse(Object response) {
 		if (response instanceof Pair) {
 			me = (Pair) response;
 		} else if (response instanceof Map) {
 			pairsList = (Map<UUID, Pair>) response;
 		}
+
+		System.out.println("RESPONSE :" + response.getClass() + " | DATA :["
+				+ response + "]");
 	}
 
 	public static void main(String[] args) {
-		Client client = null;
-		Client client2 = null;
 		try {
-			client = new Client(InetAddress.getByName(args[0]),
-					Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
-			client2 = new Client(InetAddress.getByName(args[0]),
+			new Client(InetAddress.getByName(args[0]),
 					Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
 		} catch (NumberFormatException | UnknownHostException e) {
-			e.printStackTrace();
-		}
-		try {
-			client.send(new ConnectionRequest(client.me));
-			client2.send(new ConnectionRequest(client.me));
-			System.out.println(client.me);
-			System.out.println(client2.me);
-			client.send(new PairListRequest());
-			client2.send(new PairListRequest());
-			System.out.println(client.pairsList);
-			System.out.println(client2.pairsList);
-			client.send(new QuitRequest(client.me));
-			client2.send(new PairListRequest());
-			System.out.println(client2.pairsList);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println(e.getMessage());
 		}
 	}
-	
+
 	private List<File> getFilesToShared(String path) {
 		File files = new File(path);
 		return Arrays.asList(files.listFiles());
@@ -120,6 +123,8 @@ public class Client {
 
 	private void close() {
 		socket.close();
+		//threadRefresh.interrupt();
+		threadListen.interrupt();
 	}
 }
 
@@ -127,7 +132,8 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 
 	public FilesSharedSocket() throws IOException {
 		super(0);
-		System.out.println("FilesSharedSocket created on port "+this.getLocalPort());
+		System.out.println("FilesSharedSocket created on port "
+				+ this.getLocalPort());
 		// TODO Auto-generated constructor stub
 	}
 
@@ -138,12 +144,91 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 		try {
 			newClient = this.accept();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println(e.getMessage());
 		}
-		
+
 	}
-	
+
 }
 
+class ThreadListen extends Thread {
 
+	private Client client;
+	private DatagramSocket socket;
+	private byte[] bufferReceived;
+
+	public ThreadListen(Client client, DatagramSocket socket) {
+		this.client = client;
+		this.socket = socket;
+
+		try {
+			bufferReceived = new byte[socket.getReceiveBufferSize()];
+		} catch (SocketException e) {
+			System.err.println(e.getMessage());
+		}
+	}
+
+	@Override
+	public void run() {
+		while (!isInterrupted()) {
+
+			// On ecoute la reponse
+			DatagramPacket rPacket = new DatagramPacket(bufferReceived,
+					bufferReceived.length);
+			try {
+				socket.receive(rPacket);
+			} catch (IOException e) {
+				System.err.println(e.getMessage());
+			}
+
+			// On traite la reponse
+			client.receiveResponse(Serializer.deserialize(rPacket.getData()));
+
+		}
+	}
+}
+
+class ThreadRefresh extends Thread {
+
+	private Client client;
+	private DatagramSocket socket;
+	private byte[] bufferReceived;
+
+	public ThreadRefresh(Client client, DatagramSocket socket) {
+		this.client = client;
+		this.socket = socket;
+
+		try {
+			bufferReceived = new byte[socket.getReceiveBufferSize()];
+		} catch (SocketException e) {
+			System.err.println(e.getMessage());
+		}
+	}
+
+	@Override
+	public void run() {
+		while (!isInterrupted()) {
+			try {
+				// On Serialize la Request
+				byte[] datas = Serializer.serialize(new PairListRequest());
+
+				// On envoie la Request serialized
+				DatagramPacket packet = new DatagramPacket(datas, datas.length,
+						client.serverAdress, client.serverPort);
+				socket.send(packet);
+
+				// On ecoute la reponse
+				DatagramPacket rPacket = new DatagramPacket(bufferReceived,
+						bufferReceived.length);
+				socket.receive(rPacket);
+
+				// On traite la reponse
+				client.receiveResponse(Serializer.deserialize(rPacket.getData()));
+
+				sleep(2000);
+			} catch (IOException | InterruptedException e) {
+				System.err.println(e.getMessage());
+			}
+		}
+	}
+}

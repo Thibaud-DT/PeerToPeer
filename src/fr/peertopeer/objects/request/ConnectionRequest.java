@@ -1,5 +1,6 @@
 package fr.peertopeer.objects.request;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.UUID;
 
@@ -31,7 +32,13 @@ public class ConnectionRequest extends Request implements Serializable{
 	public Object build(Server server) {
 		newPair.setUuid(UUID.randomUUID());
 		server.addPair(newPair);
-		System.out.println("Add pair "+newPair.getUuid().toString());
+		
+		try {
+			server.sendBroadcast(new PairListRequest());
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+		
 		return newPair;
 	}
 }

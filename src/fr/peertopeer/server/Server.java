@@ -60,9 +60,21 @@ public class Server implements Runnable {
 	}
 	
 	private void send(Request request, DatagramPacket packet) throws IOException{
-		byte[] datas = Serializer.serialize(request.build(this));
+		Object response = request.build(this);
+		byte[] datas = Serializer.serialize(response);
+		System.out.println("REQUEST :["+request.getClass()+"] | FROM :["+packet.getAddress()+":"+packet.getPort()+"] | RESPONSE :["+response+"]");  
 		packet.setData(datas);
 		socket.send(packet);
+	}
+	
+	public void sendBroadcast(Request request) throws IOException{
+		request.build(this);
+		DatagramPacket packetPair = new DatagramPacket(bufferReceived, bufferReceived.length);
+		for(Entry<UUID,Pair> pair : pairsList.entrySet()){
+			packetPair.setAddress(pair.getValue().getAdress());
+			packetPair.setPort(pair.getValue().getPort());
+			send(request, packetPair);
+		}
 	}
 
 	public void go() {
@@ -97,6 +109,7 @@ public class Server implements Runnable {
 	public Map<UUID,Pair> getPairsList(){
 		return pairsList;
 	}
+	
 
 	public static void main(String[] args) {
 		Server server = new Server(Integer.valueOf(args[0]));
