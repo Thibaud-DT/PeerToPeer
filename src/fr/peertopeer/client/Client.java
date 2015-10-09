@@ -1,14 +1,19 @@
 package fr.peertopeer.client;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,7 +37,7 @@ public class Client {
 	
 
 	public Client(InetAddress serverAdress, int serverPort,
-			int tcpSharedFilesPort) {
+			int tcpSharedFilesPort, String pathSharedFiles) {
 		try {
 			socket = new DatagramSocket();
 			bufferReceived = new byte[socket.getReceiveBufferSize()];
@@ -49,7 +54,7 @@ public class Client {
 			e.printStackTrace();
 		}
 		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(),
-				filesSSocket.getLocalPort(), null);
+				filesSSocket.getLocalPort(), getFilesToShared(pathSharedFiles));
 	}
 
 	public void send(Request request) throws IOException {
@@ -85,9 +90,9 @@ public class Client {
 		Client client2 = null;
 		try {
 			client = new Client(InetAddress.getByName(args[0]),
-					Integer.valueOf(args[1]), Integer.valueOf(args[2]));
+					Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
 			client2 = new Client(InetAddress.getByName(args[0]),
-					Integer.valueOf(args[1]), Integer.valueOf(args[2]));
+					Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
 		} catch (NumberFormatException | UnknownHostException e) {
 			e.printStackTrace();
 		}
@@ -108,6 +113,11 @@ public class Client {
 			e.printStackTrace();
 		}
 	}
+	
+	private List<File> getFilesToShared(String path) {
+		File files = new File(path);
+		return Arrays.asList(files.listFiles());
+	}
 
 	private void close() {
 		socket.close();
@@ -125,7 +135,16 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 	@Override
 	public void run() {
 		// TODO Auto-generated method stub
+		Socket newClient = null;
+		try {
+			newClient = this.accept();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 	
 }
+
+
