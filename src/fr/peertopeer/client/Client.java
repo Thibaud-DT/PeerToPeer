@@ -1,7 +1,16 @@
 package fr.peertopeer.client;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -12,6 +21,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
@@ -19,6 +29,7 @@ import fr.peertopeer.objects.request.ConnectionRequest;
 import fr.peertopeer.objects.request.PairListRequest;
 import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Serializer;
+import sun.awt.FwDispatcher;
 
 public class Client {
 
@@ -32,8 +43,7 @@ public class Client {
 	private ThreadRefresh threadRefresh;
 	private ThreadListen threadListen;
 
-	public Client(InetAddress serverAdress, int serverPort,
-			int tcpSharedFilesPort, String pathSharedFiles) {
+	public Client(InetAddress serverAdress, int serverPort, int tcpSharedFilesPort, String pathSharedFiles) {
 		try {
 			socket = new DatagramSocket();
 			bufferReceived = new byte[socket.getReceiveBufferSize()];
@@ -44,12 +54,12 @@ public class Client {
 		this.serverPort = serverPort;
 		this.serverAdress = serverAdress;
 		try {
-			filesSSocket = new FilesSharedSocket();
+			filesSSocket = new FilesSharedSocket(this.me.getSharedFiles());
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 		}
-		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(),
-				filesSSocket.getLocalPort(), getFilesToShared(pathSharedFiles));
+		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(), filesSSocket.getLocalPort(),
+				getFilesToShared(pathSharedFiles));
 
 		try {
 			sendAndReceive(new ConnectionRequest(me));
@@ -60,9 +70,9 @@ public class Client {
 
 		threadListen = new ThreadListen(this, socket);
 		threadListen.start();
-		
-		//threadRefresh = new ThreadRefresh(this, socket);
-		//threadRefresh.start();
+
+		// threadRefresh = new ThreadRefresh(this, socket);
+		// threadRefresh.start();
 	}
 
 	public void send(Request request) throws IOException {
@@ -70,10 +80,8 @@ public class Client {
 		byte[] datas = Serializer.serialize(request);
 
 		// On envoie la Request serialized
-		DatagramPacket packet = new DatagramPacket(datas, datas.length,
-				serverAdress, serverPort);
+		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
 		socket.send(packet);
-
 	}
 
 	public void sendAndReceive(Request request) throws IOException {
@@ -81,13 +89,11 @@ public class Client {
 		byte[] datas = Serializer.serialize(request);
 
 		// On envoie la Request serialized
-		DatagramPacket packet = new DatagramPacket(datas, datas.length,
-				serverAdress, serverPort);
+		DatagramPacket packet = new DatagramPacket(datas, datas.length, serverAdress, serverPort);
 		socket.send(packet);
 
 		// On ecoute la reponse
-		DatagramPacket rPacket = new DatagramPacket(bufferReceived,
-				bufferReceived.length);
+		DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
 		socket.receive(rPacket);
 
 		// On traite la reponse
@@ -103,14 +109,12 @@ public class Client {
 			pairsList = (Map<UUID, Pair>) response;
 		}
 
-		System.out.println("RESPONSE :" + response.getClass() + " | DATA :["
-				+ response + "]");
+		System.out.println("RESPONSE :" + response.getClass() + " | DATA :[" + response + "]");
 	}
 
 	public static void main(String[] args) {
 		try {
-			new Client(InetAddress.getByName(args[0]),
-					Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
+			new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
 		} catch (NumberFormatException | UnknownHostException e) {
 			System.err.println(e.getMessage());
 		}
@@ -123,17 +127,64 @@ public class Client {
 
 	private void close() {
 		socket.close();
-		//threadRefresh.interrupt();
+		// threadRefresh.interrupt();
 		threadListen.interrupt();
+	}
+}
+
+class DownloadFile extends Thread {
+	private File dwnFile;
+	private Pair pair;
+	private String pathDest;
+	public DownloadFile(File dwnFile, Pair pair, String pathDest) {
+		// TODO Auto-generated constructor stub
+		this.dwnFile = dwnFile;
+		this.pair = pair;
+		this.pathDest = pathDest;
+	}
+	
+	@Override
+	public void run() {
+		Socket sock = null;
+		try {
+			sock = new Socket(pair.getAdress(), pair.getFilePort());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+		DataInputStream dis = null;
+		DataOutputStream dos = null;
+		try {
+			dis = new DataInputStream(sock.getInputStream());
+			dos = new DataOutputStream(sock.getOutputStream());
+			receiveFile(dos, dis);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+	}
+	
+	private void receiveFile(DataOutputStream out, DataInputStream in) throws IOException {
+		out.write(dwnFile.getName().getBytes());
+		FileWriter ofile = new FileWriter(this.pathDest+""+this.dwnFile.getName());
+		for(int i = 0; i < this.dwnFile.length(); i++) {
+			byte b = in.readByte();
+			ofile.write(b);
+			System.out.println(i*100/this.dwnFile.length()+"%");
+		}
 	}
 }
 
 class FilesSharedSocket extends ServerSocket implements Runnable {
 
-	public FilesSharedSocket() throws IOException {
+	private List<File> files;
+
+	public FilesSharedSocket(List<File> sharedFiles) throws IOException {
 		super(0);
-		System.out.println("FilesSharedSocket created on port "
-				+ this.getLocalPort());
+		files = sharedFiles;
+		System.out.println("FilesSharedSocket created on port " + this.getLocalPort());
 		// TODO Auto-generated constructor stub
 	}
 
@@ -141,12 +192,55 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 	public void run() {
 		// TODO Auto-generated method stub
 		Socket newClient = null;
-		try {
-			newClient = this.accept();
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
+		while (true) {
+			try {
+				InputStream in;
+				OutputStream out;
+				Scanner scan;
+				newClient = this.accept();
+				in = newClient.getInputStream();
+				out = newClient.getOutputStream();
+				scan = new Scanner(in);
+				String sfile = scan.nextLine();
+				File file = isSharedFile(sfile);
+				if (file != null) {
+					sendFile(out, file);
+				}
+			} catch (IOException e) {
+				System.err.println(e.getMessage());
+			}
 		}
 
+	}
+
+	private File isSharedFile(String file) {
+		for (File f : files) {
+			if (f.getName().equals(file)) {
+				return f;
+			}
+		}
+		return null;
+	}
+
+	private void sendFile(OutputStream out, File file) {
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(file);
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			return;
+		}
+		byte[] buffer = new byte[(int) file.length()];
+		try {
+			DataOutputStream dos = new DataOutputStream(out);
+			fis.read(buffer);
+			out.write(buffer);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
 	}
 
 }
@@ -173,8 +267,7 @@ class ThreadListen extends Thread {
 		while (!isInterrupted()) {
 
 			// On ecoute la reponse
-			DatagramPacket rPacket = new DatagramPacket(bufferReceived,
-					bufferReceived.length);
+			DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
 			try {
 				socket.receive(rPacket);
 			} catch (IOException e) {
@@ -213,13 +306,11 @@ class ThreadRefresh extends Thread {
 				byte[] datas = Serializer.serialize(new PairListRequest());
 
 				// On envoie la Request serialized
-				DatagramPacket packet = new DatagramPacket(datas, datas.length,
-						client.serverAdress, client.serverPort);
+				DatagramPacket packet = new DatagramPacket(datas, datas.length, client.serverAdress, client.serverPort);
 				socket.send(packet);
 
 				// On ecoute la reponse
-				DatagramPacket rPacket = new DatagramPacket(bufferReceived,
-						bufferReceived.length);
+				DatagramPacket rPacket = new DatagramPacket(bufferReceived, bufferReceived.length);
 				socket.receive(rPacket);
 
 				// On traite la reponse
