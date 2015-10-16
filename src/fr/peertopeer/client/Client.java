@@ -117,7 +117,7 @@ public class Client {
 		if (!pairsList.isEmpty()) {
 			System.out.println("Try to downloading file...");
 			for (Entry<UUID, Pair> e : pairsList.entrySet()) {
-				new DownloadFile(e.getValue().getSharedFiles().get(0), e.getValue(), "/home/chavalc/").start();
+				new DownloadFile(e.getValue().getSharedFiles().get(0), e.getValue(), "/home/delobelt/p2p/1/").start();
 			}
 		}
 	}
