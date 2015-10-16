@@ -43,7 +43,7 @@ public class ThreadRefresh extends Thread {
 				// On traite la reponse
 				client.receiveResponse(Serializer.deserialize(rPacket.getData()));
 
-				sleep(2000);
+				sleep(60000);
 			} catch (IOException | InterruptedException e) {
 				System.err.println(e.getMessage());
 			}
