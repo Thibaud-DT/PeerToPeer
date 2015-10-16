@@ -13,7 +13,7 @@ public class Pair implements Serializable{
 	
 	private UUID uuid;
 	private InetAddress adress;
-	private int filePort;
+	private int clientPort;
 	private List<File> sharedFiles;
 
 	private int port;
@@ -22,18 +22,18 @@ public class Pair implements Serializable{
 		sharedFiles = new ArrayList<File>();
 	}
 	
-	public Pair(InetAddress adress,int port, int filePort, List<File> sharedFiles) {
+	public Pair(InetAddress adress, int port, int clientPort, List<File> sharedFiles) {
 		this.adress = adress;
 		this.setPort(port);
-		this.filePort = filePort;
+		this.clientPort = clientPort;
 		this.sharedFiles = sharedFiles;
 		this.uuid = UUID.randomUUID();
 	}
 	
-	public Pair(UUID uuid, InetAddress adress, int filePort, List<File> sharedFiles) {
+	public Pair(UUID uuid, InetAddress adress, int clientPort, List<File> sharedFiles) {
 		this.uuid = uuid;
 		this.adress = adress;
-		this.filePort = filePort;
+		this.clientPort = clientPort;
 		this.sharedFiles = sharedFiles;
 	}
 	public UUID getUuid() {
@@ -48,11 +48,11 @@ public class Pair implements Serializable{
 	public void setAdress(InetAddress adress) {
 		this.adress = adress;
 	}
-	public int getFilePort() {
-		return filePort;
+	public int getClientPort() {
+		return clientPort;
 	}
-	public void setFilePort(int filePort) {
-		this.filePort = filePort;
+	public void setClientPort(int clientPort) {
+		this.clientPort = clientPort;
 	}
 	public List<File> getSharedFiles() {
 		return sharedFiles;
@@ -66,7 +66,7 @@ public class Pair implements Serializable{
 
 	@Override
 	public String toString() {
-		return "Pair [uuid=" + uuid + ", adress=" + adress + ", port=" + port + ", filePort=" + filePort + ", sharedFiles=" + sharedFiles
+		return "Pair [uuid=" + uuid + ", adress=" + adress + ", port=" + port + ", filePort=" + clientPort + ", sharedFiles=" + sharedFiles
 				+ "]";
 	}
 

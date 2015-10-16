@@ -6,16 +6,18 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
+import fr.peertopeer.objects.FileShared;
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.ConnectionRequest;
+import fr.peertopeer.objects.request.FileRequest;
 import fr.peertopeer.objects.request.PairListRequest;
+import fr.peertopeer.objects.request.QuitRequest;
 import fr.peertopeer.objects.request.Request;
 import fr.peertopeer.utils.Logger;
 import fr.peertopeer.utils.Serializer;
@@ -23,6 +25,14 @@ import fr.peertopeer.utils.Serializer;
 public class Client {
 	
 	private Logger logger = Logger.getInstance();
+
+	public Map<UUID, Pair> getPairsList() {
+		return pairsList;
+	}
+
+	public void setPairsList(Map<UUID, Pair> pairsList) {
+		this.pairsList = pairsList;
+	}
 
 	private Map<UUID, Pair> pairsList;
 	private Pair me;
@@ -35,13 +45,16 @@ public class Client {
 	
 	private byte[] bufferReceived;
 	
-	private FilesSharedSocket filesSSocket = null;
 	private ThreadRefresh threadRefresh;
 	private ThreadListen threadListen;
+
+	private String pathSharedFiles;
+	private List<File> filesShared;
 
 	public Client(InetAddress serverAdress, int serverPort, String pathSharedFiles) {
 		try {
 			socketServer = new DatagramSocket();
+			socketClient = new DatagramSocket();
 			bufferReceived = new byte[socketServer.getReceiveBufferSize()];
 		} catch (SocketException e) {
 			logger.error(e.getMessage());
@@ -50,15 +63,11 @@ public class Client {
 		this.serverPort = serverPort;
 		this.serverAdress = serverAdress;
 		
-		me = new Pair(socketServer.getLocalAddress(), socketServer.getLocalPort(), 0, getFilesToShared(pathSharedFiles));
-
-		try {
-			filesSSocket = new FilesSharedSocket(this.me.getSharedFiles());
-			this.me.setFilePort(filesSSocket.getLocalPort());
-			logger.debug("Client FilesServerSocket Port :"+filesSSocket.getLocalPort());
-		} catch (IOException e) {
-			logger.error(e.getMessage());
-		}
+		this.pathSharedFiles = pathSharedFiles;
+		logger.debug(this.pathSharedFiles);
+		filesShared = getFilesToShared(pathSharedFiles);
+		
+		me = new Pair(socketServer.getLocalAddress(), socketServer.getLocalPort(), socketClient.getLocalPort(), filesShared);
 
 		try {
 			sendAndReceive(new ConnectionRequest(me));
@@ -67,10 +76,19 @@ public class Client {
 			logger.error(e.getMessage());
 		}
 
-		/*threadRefresh = new ThreadRefresh(this, socketServer);
+		threadRefresh = new ThreadRefresh(this, socketServer);
 		threadRefresh.start();
+		
 		threadListen = new ThreadListen(this, socketClient);
-		threadListen.start();*/
+		threadListen.start();
+	}
+
+	public List<File> getFilesShared() {
+		return filesShared;
+	}
+
+	public void setFilesShared(List<File> filesShared) {
+		this.filesShared = filesShared;
 	}
 
 	public Pair getMe() {
@@ -107,23 +125,64 @@ public class Client {
 		} else if (response instanceof Map) {
 			pairsList = (Map<UUID, Pair>) response;
 			pairsList.remove(this.me.getUuid());
+		} else if (response instanceof FileRequest){
+			FileRequest Fresponse = (FileRequest) response;
+			FileShared sendResponse = (FileShared)Fresponse.build(this);
+			this.send(Fresponse.getRequester(), sendResponse);
+		} else if (response instanceof FileShared){
+			new ThreadReceiveFile(this,(FileShared)response).start();
 		}
 
 		logger.debug("RESPONSE :" + response.getClass() + " | DATA :[" + response + "]");
 	}
 
+	private void send(Pair receiver,Object object) {
+		byte[] datas = Serializer.serialize(object);
 
-	public void downloadFile(Pair pair, File file) {
-		if (!pairsList.isEmpty()) {
-			System.out.println("Try to downloading file...");
-			for (Entry<UUID, Pair> e : pairsList.entrySet()) {
-				new DownloadFile(e.getValue().getSharedFiles().get(0), e.getValue(), "/home/delobelt/p2p/1/").start();
-			}
+		DatagramPacket packet = new DatagramPacket(datas, datas.length, receiver.getAdress(), receiver.getClientPort());
+		
+		try{
+			socketClient.send(packet);
+		}catch(IOException e){
+			logger.error(e.getMessage());
 		}
+		
+	}
+
+	public void sendFileRequest(UUID uuid, String filename){
+		send(pairsList.get(uuid), new FileRequest(this.me, filename));
 	}
 	
 	public List<File> getFilesToShared(String path) {
 		File dir = new File(path);
-		return Arrays.asList(dir.listFiles());
+		if(dir.exists())
+			return Arrays.asList(dir.listFiles());
+		else{
+			dir.mkdirs();
+			logger.warning("Le dossier ["+path+"] n'exite pas, il a été créé.");
+			return new ArrayList<File>();
+		}
+			
+	}
+
+	public String getPathSharedFiles() {
+		return pathSharedFiles;
+	}
+
+	public void setPathSharedFiles(String pathSharedFiles) {
+		this.pathSharedFiles = pathSharedFiles;
+	}
+	
+	public void close(){
+		try {
+			send(new QuitRequest(getMe()));
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+		}
+		
+		socketClient.close();
+		socketServer.close();
+		threadListen.interrupt();
+		threadRefresh.interrupt();
 	}
 }

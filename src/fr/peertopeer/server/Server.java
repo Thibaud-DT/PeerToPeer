@@ -16,10 +16,10 @@ import fr.peertopeer.utils.Logger;
 import fr.peertopeer.utils.Serializer;
 
 public class Server implements Runnable {
-	
+
 	private Logger logger = Logger.getInstance();
-	
-	private Map<UUID,Pair> pairsList;
+
+	private Map<UUID, Pair> pairsList;
 	private DatagramSocket socket;
 	private Thread runningThread;
 	private byte[] bufferReceived;
@@ -31,52 +31,36 @@ public class Server implements Runnable {
 		} catch (SocketException e) {
 			logger.error(e.getMessage());
 		}
-		pairsList = new HashMap<UUID,Pair>();
+		pairsList = new HashMap<UUID, Pair>();
 	}
 
 	@Override
 	public void run() {
 		while (!runningThread.isInterrupted()) {
 			try {
-				DatagramPacket packet = new DatagramPacket(bufferReceived, bufferReceived.length);
+				DatagramPacket packet = new DatagramPacket(bufferReceived,
+						bufferReceived.length);
 				socket.receive(packet);
-				ObjectInputStream iStream = new ObjectInputStream(new ByteArrayInputStream(packet.getData()));
+				ObjectInputStream iStream = new ObjectInputStream(
+						new ByteArrayInputStream(packet.getData()));
 				Request req = (Request) iStream.readObject();
-//				iStream.close();
-//				if(req.isBroadcast()){
-//					req.build(this);
-//					DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
-//					for(Entry<UUID,Pair> pair : pairsList.entrySet()){
-//						packetPair.setAddress(pair.getValue().getAdress());
-//						packetPair.setPort(pair.getValue().getPort());
-//						send(req, packetPair);
-//					}
-//				}else{
-					send(req, packet);					
-//				}
+				send(req, packet);
 			} catch (IOException | ClassNotFoundException e) {
 				logger.error(e.getMessage());
 			}
 		}
 	}
-	
-	private void send(Request request, DatagramPacket packet) throws IOException{
+
+	private void send(Request request, DatagramPacket packet)
+			throws IOException {
 		Object response = request.build(this);
 		byte[] datas = Serializer.serialize(response);
-		logger.debug("REQUEST :["+request.getClass()+"] | FROM :["+packet.getAddress()+":"+packet.getPort()+"] | RESPONSE :["+response+"]");  
+		logger.debug("REQUEST :[" + request.getClass() + "] | FROM :["
+				+ packet.getAddress() + ":" + packet.getPort()
+				+ "] | RESPONSE :[" + response + "]");
 		packet.setData(datas);
 		socket.send(packet);
 	}
-	
-//	public void sendBroadcast(Request request) throws IOException{
-//		request.build(this);
-//		DatagramPacket packetPair = new DatagramPacket(bufferReceived, bufferReceived.length);
-//		for(Entry<UUID,Pair> pair : pairsList.entrySet()){
-//			packetPair.setAddress(pair.getValue().getAdress());
-//			packetPair.setPort(pair.getValue().getPort());
-//			send(request, packetPair);
-//		}
-//	}
 
 	public void go() {
 		if (runningThread == null || !runningThread.isAlive()) {
@@ -90,24 +74,26 @@ public class Server implements Runnable {
 	}
 
 	public void stop() {
-		if (runningThread.isAlive() && !runningThread.isInterrupted())
+		if (runningThread.isAlive() && !runningThread.isInterrupted()){
 			runningThread.interrupt();
+			socket.close();
+		}
 		else {
 			logger.error("/!\\ Server is already stoped !");
 			return;
 		}
 		logger.success("Server stopping..");
 	}
-	
+
 	public void addPair(Pair newPair) {
-		pairsList.put(newPair.getUuid(),newPair);
+		pairsList.put(newPair.getUuid(), newPair);
 	}
-	
-	public void removePair(Pair removePair){
+
+	public void removePair(Pair removePair) {
 		pairsList.remove(removePair.getUuid());
 	}
-	
-	public Map<UUID,Pair> getPairsList(){
+
+	public Map<UUID, Pair> getPairsList() {
 		return pairsList;
 	}
 }
