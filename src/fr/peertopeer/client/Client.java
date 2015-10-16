@@ -111,23 +111,6 @@ public class Client {
 
 		logger.debug("RESPONSE :" + response.getClass() + " | DATA :[" + response + "]");
 	}
-	
-	public static void main(String[] args) {
-		try {
-			Client cli = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]),
-					args[2]);
-			Thread.sleep(1000);
-			cli.downloadFile(null, null);
-		} catch (NumberFormatException e) {
-			System.err.println(e.getMessage());
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
 
 
 	public void downloadFile(Pair pair, File file) {
