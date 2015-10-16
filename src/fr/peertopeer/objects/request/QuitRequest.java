@@ -11,7 +11,6 @@ public class QuitRequest extends Request{
 	
 	public QuitRequest(Pair pairQuiting){
 		this.setPairQuiting(pairQuiting);
-		setBroadcast(true);
 	}
 
 	@Override

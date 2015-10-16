@@ -8,14 +8,16 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
 import fr.peertopeer.objects.request.Request;
+import fr.peertopeer.utils.Logger;
 import fr.peertopeer.utils.Serializer;
 
 public class Server implements Runnable {
+	
+	private Logger logger = Logger.getInstance();
 	
 	private Map<UUID,Pair> pairsList;
 	private DatagramSocket socket;
@@ -27,8 +29,7 @@ public class Server implements Runnable {
 			this.socket = new DatagramSocket(port);
 			bufferReceived = new byte[socket.getReceiveBufferSize()];
 		} catch (SocketException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getMessage());
 		}
 		pairsList = new HashMap<UUID,Pair>();
 	}
@@ -41,20 +42,20 @@ public class Server implements Runnable {
 				socket.receive(packet);
 				ObjectInputStream iStream = new ObjectInputStream(new ByteArrayInputStream(packet.getData()));
 				Request req = (Request) iStream.readObject();
-				iStream.close();
-				if(req.isBroadcast()){
-					req.build(this);
-					DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
-					for(Entry<UUID,Pair> pair : pairsList.entrySet()){
-						packetPair.setAddress(pair.getValue().getAdress());
-						packetPair.setPort(pair.getValue().getPort());
-						send(req, packetPair);
-					}
-				}else{
+//				iStream.close();
+//				if(req.isBroadcast()){
+//					req.build(this);
+//					DatagramPacket packetPair = new DatagramPacket(packet.getData(), packet.getLength());
+//					for(Entry<UUID,Pair> pair : pairsList.entrySet()){
+//						packetPair.setAddress(pair.getValue().getAdress());
+//						packetPair.setPort(pair.getValue().getPort());
+//						send(req, packetPair);
+//					}
+//				}else{
 					send(req, packet);					
-				}
+//				}
 			} catch (IOException | ClassNotFoundException e) {
-				System.err.println(e.getMessage());
+				logger.error(e.getMessage());
 			}
 		}
 	}
@@ -62,40 +63,40 @@ public class Server implements Runnable {
 	private void send(Request request, DatagramPacket packet) throws IOException{
 		Object response = request.build(this);
 		byte[] datas = Serializer.serialize(response);
-		System.out.println("REQUEST :["+request.getClass()+"] | FROM :["+packet.getAddress()+":"+packet.getPort()+"] | RESPONSE :["+response+"]");  
+		logger.debug("REQUEST :["+request.getClass()+"] | FROM :["+packet.getAddress()+":"+packet.getPort()+"] | RESPONSE :["+response+"]");  
 		packet.setData(datas);
 		socket.send(packet);
 	}
 	
-	public void sendBroadcast(Request request) throws IOException{
-		request.build(this);
-		DatagramPacket packetPair = new DatagramPacket(bufferReceived, bufferReceived.length);
-		for(Entry<UUID,Pair> pair : pairsList.entrySet()){
-			packetPair.setAddress(pair.getValue().getAdress());
-			packetPair.setPort(pair.getValue().getPort());
-			send(request, packetPair);
-		}
-	}
+//	public void sendBroadcast(Request request) throws IOException{
+//		request.build(this);
+//		DatagramPacket packetPair = new DatagramPacket(bufferReceived, bufferReceived.length);
+//		for(Entry<UUID,Pair> pair : pairsList.entrySet()){
+//			packetPair.setAddress(pair.getValue().getAdress());
+//			packetPair.setPort(pair.getValue().getPort());
+//			send(request, packetPair);
+//		}
+//	}
 
 	public void go() {
 		if (runningThread == null || !runningThread.isAlive()) {
 			runningThread = new Thread(this);
 			runningThread.start();
 		} else {
-			System.err.println("/!\\ Server is already running");
+			logger.error("/!\\ Server is already running !");
 			return;
 		}
-		System.out.println("Server started");
+		logger.success("Server started");
 	}
 
 	public void stop() {
 		if (runningThread.isAlive() && !runningThread.isInterrupted())
 			runningThread.interrupt();
 		else {
-			System.err.println("/!\\ Server is stopped or being stopped");
+			logger.error("/!\\ Server is already stoped !");
 			return;
 		}
-		System.out.println("Server stopping...");
+		logger.success("Server stopping..");
 	}
 	
 	public void addPair(Pair newPair) {
@@ -108,11 +109,5 @@ public class Server implements Runnable {
 	
 	public Map<UUID,Pair> getPairsList(){
 		return pairsList;
-	}
-	
-
-	public static void main(String[] args) {
-		Server server = new Server(Integer.valueOf(args[0]));
-		server.go();
 	}
 }
