@@ -11,13 +11,17 @@ public class Logger {
 	public static final String ANSI_BLUE = "\u001B[34m";
 	public static final String ANSI_WHITE = "\u001B[37m";
 	
+	private boolean debug;
+	
 	static public Logger getInstance(){
 		if(logger == null)
 			logger = new Logger();
 		return logger;
 	}
 	
-	public Logger() {}
+	public Logger() {
+		this.debug = false;
+	}
 	
 	public void success(String success){
 		System.out.println(ANSI_GREEN+success+ANSI_RESET);
@@ -28,14 +32,19 @@ public class Logger {
 	}
 	
 	public void warning(String warning){
-		System.out.println(ANSI_BLUE+warning+ANSI_RESET);
+		System.out.println(ANSI_YELLOW+warning+ANSI_RESET);
 	}
 	
 	public void debug(String debug){
-		System.out.println(ANSI_YELLOW+debug+ANSI_RESET);
+		if(this.debug)
+			System.out.println(ANSI_BLUE+debug+ANSI_RESET);
 	}
 	
 	public void error(String error){
 		System.out.println(ANSI_RED+error+ANSI_RESET);
+	}
+
+	public void setDebug(boolean b) {
+		this.debug = b;
 	}
 }
