@@ -123,9 +123,13 @@ public class Client {
 		try {
 			Client cli = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]),
 					args[3]);
+			Thread.sleep(1000);
 			cli.downloadFile(null, null);
 		} catch (NumberFormatException | UnknownHostException e) {
 			System.err.println(e.getMessage());
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -142,6 +146,7 @@ public class Client {
 
 	public void downloadFile(Pair pair, File file) {
 		if (!pairsList.isEmpty()) {
+			System.out.println("Try to downloading file...");
 			for (Entry<UUID, Pair> e : pairsList.entrySet()) {
 				new DownloadFile(e.getValue().getSharedFiles().get(0), e.getValue(), "/home/chavalc/").start();
 			}
@@ -163,7 +168,7 @@ class DownloadFile extends Thread {
 
 	@Override
 	public void run() {
-		System.out.println("Downloading file " + dwnFile.getName() + "...");
+		System.out.println("Downloading file " + dwnFile.getName() + " (on +"+pair.getAdress().getHostName()+":"+pair.getFilePort()+")...");
 		Socket sock = null;
 		try {
 			sock = new Socket(pair.getAdress(), pair.getFilePort());
@@ -223,6 +228,8 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 				OutputStream out;
 				Scanner scan;
 				newClient = this.accept();
+				System.out.println("A pair is connected");
+				System.out.flush();
 				in = newClient.getInputStream();
 				out = newClient.getOutputStream();
 				scan = new Scanner(in);
