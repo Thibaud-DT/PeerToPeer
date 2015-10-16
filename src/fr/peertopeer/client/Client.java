@@ -21,7 +21,9 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.UUID;
 
 import fr.peertopeer.objects.Pair;
@@ -42,6 +44,7 @@ public class Client {
 	private FilesSharedSocket filesSSocket = null;
 	private ThreadRefresh threadRefresh;
 	private ThreadListen threadListen;
+	private Thread threadServerSocket;
 
 	public Client(InetAddress serverAdress, int serverPort, int tcpSharedFilesPort, String pathSharedFiles) {
 		try {
@@ -53,13 +56,19 @@ public class Client {
 		}
 		this.serverPort = serverPort;
 		this.serverAdress = serverAdress;
+		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(), 0, getFilesToShared(pathSharedFiles));
+
+		threadListen = new ThreadListen(this, socket);
+		threadListen.start();
+
 		try {
-			filesSSocket = new FilesSharedSocket(this.me.getSharedFiles());
+			FilesSharedSocket serverSocket = new FilesSharedSocket(this.me.getSharedFiles());
+			this.me.setFilePort(serverSocket.getLocalPort());
+			System.out.println(serverSocket.getLocalPort());
 		} catch (IOException e) {
-			System.err.println(e.getMessage());
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		me = new Pair(socket.getLocalAddress(), socket.getLocalPort(), filesSSocket.getLocalPort(),
-				getFilesToShared(pathSharedFiles));
 
 		try {
 			sendAndReceive(new ConnectionRequest(me));
@@ -67,9 +76,6 @@ public class Client {
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 		}
-
-		threadListen = new ThreadListen(this, socket);
-		threadListen.start();
 
 		// threadRefresh = new ThreadRefresh(this, socket);
 		// threadRefresh.start();
@@ -107,6 +113,7 @@ public class Client {
 			me = (Pair) response;
 		} else if (response instanceof Map) {
 			pairsList = (Map<UUID, Pair>) response;
+			pairsList.remove(this.me.getUuid());
 		}
 
 		System.out.println("RESPONSE :" + response.getClass() + " | DATA :[" + response + "]");
@@ -114,7 +121,9 @@ public class Client {
 
 	public static void main(String[] args) {
 		try {
-			new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
+			Client cli = new Client(InetAddress.getByName(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]),
+					args[3]);
+			cli.downloadFile(null, null);
 		} catch (NumberFormatException | UnknownHostException e) {
 			System.err.println(e.getMessage());
 		}
@@ -130,21 +139,31 @@ public class Client {
 		// threadRefresh.interrupt();
 		threadListen.interrupt();
 	}
+
+	public void downloadFile(Pair pair, File file) {
+		if (!pairsList.isEmpty()) {
+			for (Entry<UUID, Pair> e : pairsList.entrySet()) {
+				new DownloadFile(e.getValue().getSharedFiles().get(0), e.getValue(), "/home/chavalc/").start();
+			}
+		}
+	}
 }
 
 class DownloadFile extends Thread {
 	private File dwnFile;
 	private Pair pair;
 	private String pathDest;
+
 	public DownloadFile(File dwnFile, Pair pair, String pathDest) {
 		// TODO Auto-generated constructor stub
 		this.dwnFile = dwnFile;
 		this.pair = pair;
 		this.pathDest = pathDest;
 	}
-	
+
 	@Override
 	public void run() {
+		System.out.println("Downloading file " + dwnFile.getName() + "...");
 		Socket sock = null;
 		try {
 			sock = new Socket(pair.getAdress(), pair.getFilePort());
@@ -165,12 +184,18 @@ class DownloadFile extends Thread {
 			return;
 		}
 	}
-	
+
 	private void receiveFile(DataOutputStream out, DataInputStream in) throws IOException {
 		out.write(dwnFile.getName().getBytes());
-		FileWriter ofile = new FileWriter(this.pathDest+""+this.dwnFile.getName());
+		FileWriter ofile = new FileWriter(this.pathDest+""+this.dwnFile.getName()+".p2p");
 		for(int i = 0; i < this.dwnFile.length(); i++) {
-			byte b = in.readByte();
+			byte b;
+			try {
+				b = in.readByte();
+			} catch(SocketException e) {
+				e.printStackTrace();
+				return;
+			}
 			ofile.write(b);
 			System.out.println(i*100/this.dwnFile.length()+"%");
 		}
@@ -202,6 +227,7 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 				out = newClient.getOutputStream();
 				scan = new Scanner(in);
 				String sfile = scan.nextLine();
+				System.out.println("A client wants to download " + sfile);
 				File file = isSharedFile(sfile);
 				if (file != null) {
 					sendFile(out, file);
