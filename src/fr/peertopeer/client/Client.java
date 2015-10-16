@@ -67,10 +67,10 @@ public class Client {
 			logger.error(e.getMessage());
 		}
 
-		threadRefresh = new ThreadRefresh(this, socketServer);
+		/*threadRefresh = new ThreadRefresh(this, socketServer);
 		threadRefresh.start();
 		threadListen = new ThreadListen(this, socketClient);
-		threadListen.start();
+		threadListen.start();*/
 	}
 
 	public Pair getMe() {

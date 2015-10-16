@@ -12,9 +12,12 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Scanner;
 
+import fr.peertopeer.utils.Logger;
+
 class FilesSharedSocket extends ServerSocket implements Runnable {
 
 	private List<File> files;
+	private static Logger logger = Logger.getInstance();
 
 	public FilesSharedSocket(List<File> sharedFiles) throws IOException {
 		super(0);
@@ -33,6 +36,7 @@ class FilesSharedSocket extends ServerSocket implements Runnable {
 				OutputStream out;
 				Scanner scan;
 				newClient = this.accept();
+				logger.info("Pair connected");
 				in = newClient.getInputStream();
 				out = newClient.getOutputStream();
 				scan = new Scanner(in);
